@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+
+  # =========================
+  # PostgreSQL (Data Warehouse)
+  # =========================
+  postgres:
+    image: postgres:15
+    container_name: postgres_dw
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: warehouse
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  # =========================
+  # Apache NiFi
+  # =========================
+  nifi:
+    image: apache/nifi:latest
+    container_name: nifi
+    ports:
+      - "8443:8443"
+    environment:
+      SINGLE_USER_CREDENTIALS_USERNAME: admin
+      SINGLE_USER_CREDENTIALS_PASSWORD: adminadmin
+    volumes:
+      - nifi_data:/opt/nifi/nifi-current/data
+    depends_on:
+      - postgres
+
+  # =========================
+  # Airflow (Scheduler)
+  # =========================
+  airflow:
+    image: apache/airflow:2.8.1
+    container_name: airflow
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin@postgres/warehouse
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    command: >
+      bash -c "airflow db init &&
+               airflow users create
+               --username admin
+               --password admin
+               --firstname admin
+               --lastname admin
+               --role Admin
+               --email admin@example.com &&
+               airflow webserver & airflow scheduler"
+
+  # =========================
+  # dbt (Run manually or via Airflow)
+  # =========================
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:latest
+    container_name: dbt
+    volumes:
+      - ./dbt:/usr/app/dbt
+    working_dir: /usr/app/dbt
+    depends_on:
+      - postgres
+
+volumes:
+  pg_data:
+  nifi_data:

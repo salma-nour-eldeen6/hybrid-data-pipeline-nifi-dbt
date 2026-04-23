@@ -8,12 +8,14 @@ services:
   postgres:
     image: postgres:15
     container_name: postgres_dw
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: warehouse
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
 
@@ -23,39 +25,43 @@ services:
   nifi:
     image: apache/nifi:latest
     container_name: nifi
+    env_file:
+      - .env
     ports:
-      - "8443:8443"
+      - "${NIFI_PORT}:8443"
     environment:
-      SINGLE_USER_CREDENTIALS_USERNAME: admin
-      SINGLE_USER_CREDENTIALS_PASSWORD: adminadmin
+      SINGLE_USER_CREDENTIALS_USERNAME: ${NIFI_USERNAME}
+      SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_PASSWORD}
     volumes:
       - nifi_data:/opt/nifi/nifi-current/data
     depends_on:
       - postgres
 
   # =========================
-  # Airflow (Scheduler)
+  # Airflow (Scheduler + Webserver)
   # =========================
   airflow:
     image: apache/airflow:2.8.1
     container_name: airflow
+    env_file:
+      - .env
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:admin@postgres/warehouse
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW_DB_CONN}
     ports:
-      - "8080:8080"
+      - "${AIRFLOW_PORT}:8080"
     depends_on:
       - postgres
     command: >
       bash -c "airflow db init &&
                airflow users create
-               --username admin
-               --password admin
+               --username ${AIRFLOW_USER}
+               --password ${AIRFLOW_PASSWORD}
                --firstname admin
                --lastname admin
                --role Admin
-               --email admin@example.com &&
+               --email ${AIRFLOW_EMAIL} &&
                airflow webserver & airflow scheduler"
 
   # =========================

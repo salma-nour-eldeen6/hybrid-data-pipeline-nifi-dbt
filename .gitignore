@@ -1,0 +1,60 @@
+# =========================
+# ENV & Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# =========================
+# Airflow
+# =========================
+airflow.db
+airflow-webserver.pid
+logs/
+*.log
+
+# =========================
+# dbt
+# =========================
+dbt_packages/
+target/
+logs/
+
+# =========================
+# Docker
+# =========================
+*.env
+docker-compose.override.yml
+
+# =========================
+# OS / Editor junk
+# =========================
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# JetBrains (PyCharm, IntelliJ)
+.idea/
+
+# =========================
+# Build / Temp files
+# =========================
+*.tmp
+*.bak
+*.swp

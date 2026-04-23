@@ -58,3 +58,12 @@ Thumbs.db
 *.tmp
 *.bak
 *.swp
+
+# =========================
+# Data files (Excel / CSV / raw inputs)
+# =========================
+data/
+datasets/
+*.csv
+*.xlsx
+*.xls

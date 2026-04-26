@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 
   # =========================
@@ -18,6 +16,7 @@ services:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
+      - ./DB/init-db:/docker-entrypoint-initdb.d
 
   # =========================
   # Apache NiFi
@@ -34,6 +33,8 @@ services:
       SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_PASSWORD}
     volumes:
       - nifi_data:/opt/nifi/nifi-current/data
+      - ${DATA_PATH}:/data
+      - ./drivers/postgresql-42.7.3.jar:/opt/nifi/nifi-current/lib/postgresql.jar
     depends_on:
       - postgres
 

@@ -1,0 +1,139 @@
+{
+  "flowContents": {
+    "identifier": "c0437553-2662-3f48-afbf-da6da9cb6476",
+    "instanceIdentifier": "c2005fb6-019d-1000-8b52-41e4b33c28c9",
+    "name": "NiFi Flow",
+    "comments": "",
+    "position": { "x": 0.0, "y": 0.0 },
+
+    "processGroups": [],
+    "remoteProcessGroups": [],
+
+    "processors": [
+      {
+        "identifier": "6bd5db58-e548-39b6-b880-b78d978e0dbc",
+        "instanceIdentifier": "c2058479-019d-1000-2119-7a380ae50b52",
+        "name": "GetFile",
+        "type": "org.apache.nifi.processors.standard.GetFile",
+        "bundle": {
+          "group": "org.apache.nifi",
+          "artifact": "nifi-standard-nar",
+          "version": "2.9.0"
+        },
+        "properties": {
+          "Keep Source File": "false",
+          "Minimum File Age": "0 sec",
+          "Polling Interval": "5 sec",
+          "Input Directory": "${INPUT_DIR}",
+          "Maximum File Age": null,
+          "Batch Size": "10",
+          "Maximum File Size": null,
+          "Minimum File Size": "0 B",
+          "Ignore Hidden Files": "true",
+          "Recurse Subdirectories": "false",
+          "File Filter": ".*",
+          "Path Filter": null
+        },
+        "propertyDescriptors": {
+          "Keep Source File": { "name": "Keep Source File" },
+          "Input Directory": { "name": "Input Directory" }
+        }
+      },
+
+      {
+        "identifier": "00509ac3-3be5-317d-8243-9ec0ae0e49c9",
+        "instanceIdentifier": "c22dd4b2-019d-1000-0d76-cb8ec5439e76",
+        "name": "LogAttribute",
+        "type": "org.apache.nifi.processors.standard.LogAttribute",
+        "properties": {
+          "Log FlowFile Properties": "true",
+          "Log Level": "info",
+          "Output Format": "Line per Attribute",
+          "Log Payload": "false",
+          "Attributes to Ignore Regular Expression": ".*",
+          "Attributes to Log Regular Expression": ".*"
+        }
+      },
+
+      {
+        "identifier": "c2a2f7ec-019d-1000-2654-2f946a6b9e6a",
+        "instanceIdentifier": "6bc27f4c-80f3-3966-6b8a-e908c73fe38b",
+        "name": "LogAttribute",
+        "type": "org.apache.nifi.processors.standard.LogAttribute"
+      },
+
+      {
+        "identifier": "6c3c667e-5137-360d-bda2-a662d78c9cbc",
+        "instanceIdentifier": "c2062ad4-019d-1000-9b94-fbf1ce3bcb30",
+        "name": "PutDatabaseRecord",
+        "type": "org.apache.nifi.processors.standard.PutDatabaseRecord",
+        "properties": {
+          "Table Name": "insurance_data",
+          "Quote Column Identifiers": "false",
+          "Max Wait Time": "0 seconds",
+
+          "Database Connection Pooling Service": "111909ca-886f-3e4d-b66e-4a10001c408b",
+          "Record Reader": "ba45230d-094f-3d80-8a0c-397a747cc473",
+
+          "Schema Name": "bronze",
+          "Database Session AutoCommit": "false",
+
+          "Database Name": "insurance_dw",
+
+          "Unmatched Field Behavior": "Ignore Unmatched Fields",
+          "Allow Multiple SQL Statements": "false",
+          "Rollback On Failure": "false",
+
+          "Column Name Translation Strategy": "REMOVE_UNDERSCORE",
+          "Translate Field Names": "true",
+
+          "Statement Type": "INSERT",
+          "Maximum Batch Size": "1000"
+        }
+      }
+    ],
+
+    "connections": [
+      {
+        "source": "GetFile",
+        "destination": "PutDatabaseRecord",
+        "relationships": ["success"]
+      },
+      {
+        "source": "PutDatabaseRecord",
+        "destination": "LogAttribute",
+        "relationships": ["failure"]
+      },
+      {
+        "source": "PutDatabaseRecord",
+        "destination": "LogAttribute",
+        "relationships": ["success"]
+      }
+    ],
+
+    "controllerServices": [
+      {
+        "name": "DBCPConnectionPool",
+        "type": "org.apache.nifi.dbcp.DBCPConnectionPool",
+        "properties": {
+          "Database Connection URL": "${DB_URL}",
+          "Database User": "${DB_USER}",
+          "Password": "${DB_PASSWORD}",
+          "Database Driver Class Name": "org.postgresql.Driver",
+          "Max Total Connections": "8",
+          "Max Idle Connections": "8"
+        }
+      },
+
+      {
+        "name": "CSVReader",
+        "type": "org.apache.nifi.csv.CSVReader",
+        "properties": {
+          "Schema Access Strategy": "infer-schema",
+          "Trim Fields": "true",
+          "Character Set": "UTF-8"
+        }
+      } 
+    ]
+  }
+}

@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS bronze.insurance_data (
     occupation VARCHAR(50),
     health_score FLOAT,
     location VARCHAR(50),
-    policy_type (50),
+    policy_type VARCHAR(50),
     previous_claims INT,
     vehicle_age INT,
     credit_score INT,

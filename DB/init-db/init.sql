@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS bronze.insurance_data (
     vehicle_age INT,
     credit_score INT,
     insurance_duration INT,
-    policy_start_date DATE,
+    policy_start_date VARCHAR(50),
     customer_feedback TEXT,
     smoking_status VARCHAR(10),
     exercise_frequency VARCHAR(20),

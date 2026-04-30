@@ -93,3 +93,13 @@ A validation query confirms successful ingestion:
 
 ```sql
 SELECT COUNT(*) FROM bronze.insurance_data;
+```
+---
+
+![Database Result](screenshots/dbContent.png)
+
+A validation query confirms successful ingestion:
+
+```sql
+ SELECT * FROM insurance_dw.bronze.insurance_data LIMIT 3;
+ ```

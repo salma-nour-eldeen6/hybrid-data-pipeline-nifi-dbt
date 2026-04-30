@@ -17,6 +17,21 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./DB/init-db:/docker-entrypoint-initdb.d
+    restart: always
+
+
+  # =========================
+  # Apache NiFi Registry (IMPORTANT)
+  # =========================
+  nifi-registry:
+    image: apache/nifi-registry:latest
+    container_name: nifi_registry
+    ports:
+      - "18080:18080"
+    volumes:
+      - nifi_registry_data:/opt/nifi-registry/nifi-registry-current/database
+    restart: always
+
 
   # =========================
   # Apache NiFi
@@ -31,15 +46,32 @@ services:
     environment:
       SINGLE_USER_CREDENTIALS_USERNAME: ${NIFI_USERNAME}
       SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_PASSWORD}
+
+      NIFI_WEB_HTTP_PORT: 8080
+      NIFI_CLUSTER_IS_NODE: "false"
+
     volumes:
-      - nifi_data:/opt/nifi/nifi-current/data
+      - nifi_conf:/opt/nifi/nifi-current/conf
+      - nifi_state:/opt/nifi/nifi-current/state
+      - nifi_db:/opt/nifi/nifi-current/database_repository
+      - nifi_flowfile:/opt/nifi/nifi-current/flowfile_repository
+      - nifi_content:/opt/nifi/nifi-current/content_repository
+      - nifi_provenance:/opt/nifi/nifi-current/provenance_repository
+
+      # external data
       - ${DATA_PATH}:/data
+
+      # JDBC driver
       - ./drivers/postgresql-42.7.3.jar:/opt/nifi/nifi-current/lib/postgresql.jar
+
     depends_on:
       - postgres
+      - nifi-registry
+    restart: always
+
 
   # =========================
-  # Airflow (Scheduler + Webserver)
+  # Airflow
   # =========================
   airflow:
     image: apache/airflow:2.8.1
@@ -54,19 +86,23 @@ services:
       - "${AIRFLOW_PORT}:8080"
     depends_on:
       - postgres
+    restart: always
     command: >
-      bash -c "airflow db init &&
-               airflow users create
-               --username ${AIRFLOW_USER}
-               --password ${AIRFLOW_PASSWORD}
-               --firstname admin
-               --lastname admin
-               --role Admin
-               --email ${AIRFLOW_EMAIL} &&
-               airflow webserver & airflow scheduler"
+      bash -c "
+      airflow db migrate &&
+      airflow users create
+        --username ${AIRFLOW_USER}
+        --password ${AIRFLOW_PASSWORD}
+        --firstname admin
+        --lastname admin
+        --role Admin
+        --email ${AIRFLOW_EMAIL} || true &&
+      airflow webserver & airflow scheduler
+      "
+
 
   # =========================
-  # dbt (Run manually or via Airflow)
+  # dbt
   # =========================
   dbt:
     image: ghcr.io/dbt-labs/dbt-postgres:latest
@@ -76,7 +112,22 @@ services:
     working_dir: /usr/app/dbt
     depends_on:
       - postgres
+    restart: "no"
 
+
+# =========================
+# Volumes (PERSISTENCE LAYER)
+# =========================
 volumes:
   pg_data:
-  nifi_data:
+
+  # NiFi core persistence
+  nifi_conf:
+  nifi_state:
+  nifi_db:
+  nifi_flowfile:
+  nifi_content:
+  nifi_provenance:
+
+  # NiFi Registry
+  nifi_registry_data:

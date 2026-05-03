@@ -110,10 +110,7 @@ services:
     volumes:
       - ./dbt:/usr/app/dbt
     working_dir: /usr/app/dbt
-    depends_on:
-      - postgres
-    restart: "no"
-
+    entrypoint: ["tail", "-f", "/dev/null"]
 
 # =========================
 # Volumes (PERSISTENCE LAYER)

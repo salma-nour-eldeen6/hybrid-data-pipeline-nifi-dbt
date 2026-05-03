@@ -1,0 +1,266 @@
+version: 2
+
+models:
+
+  # ============================================================
+  # BRONZE TESTS
+  # ============================================================
+  - name: insurance_bronze
+    description: Cleaned and imputed bronze layer
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          compare_model: ref('insurance_silver')
+
+    columns:
+      - name: id
+        data_tests:
+          - unique
+          - not_null
+
+      - name: age
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 18
+              max_value: 100
+
+      - name: annual_income
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+
+      - name: credit_score
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 300
+              max_value: 850
+
+      - name: gender
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['male', 'female']
+
+      - name: marital_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['single', 'married', 'divorced', 'unknown']
+
+      - name: policy_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['basic', 'standard', 'premium']
+
+      - name: smoking_status
+        data_tests:
+          - accepted_values:
+              values: ['yes', 'no']
+
+      - name: exercise_frequency
+        data_tests:
+          - accepted_values:
+              values: ['rarely', 'monthly', 'weekly', 'daily']
+
+      - name: number_of_dependents
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 10
+
+      - name: health_score
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+      - name: vehicle_age
+        data_tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 50
+
+      - name: insurance_duration
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+
+      - name: is_age_imputed
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+
+      - name: is_income_imputed
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+
+      - name: is_credit_score_imputed
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+
+  # ============================================================
+  # SILVER TESTS
+  # ============================================================
+  - name: insurance_silver
+    description: Enriched silver layer with segments and flags
+
+    columns:
+      - name: id
+        data_tests:
+          - unique
+          - not_null
+
+      - name: age_group
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['young', 'adult', 'senior']
+
+      - name: income_segment
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['low', 'medium', 'high']
+
+      - name: risk_category
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['low_risk', 'medium_risk', 'high_risk']
+
+      - name: claim_profile
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['no_claims', 'low_claims', 'high_claims', 'unknown']
+
+      - name: lifestyle_profile
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['healthy', 'unhealthy', 'unknown']
+
+      - name: is_high_risk_customer
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [0, 1]
+
+      - name: data_quality_tier
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['complete', 'mostly_complete', 'high_missing']
+
+      - name: imputed_fields_count
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 6
+
+  # ============================================================
+  # GOLD TESTS
+  # ============================================================
+  - name: fact_customer_insurance
+    columns:
+      - name: fact_sk
+        data_tests:
+          - unique
+          - not_null
+
+      - name: customer_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              to: ref('insurance_silver')
+              field: id
+
+      - name: customer_sk
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_sk
+
+      - name: policy_sk
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_policy')
+              field: policy_sk
+
+      - name: risk_sk
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_risk')
+              field: risk_sk
+
+      - name: estimated_monthly_premium
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: false
+
+      - name: customer_ltv_proxy
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+      - name: composite_risk_score
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+
+  - name: dim_customer
+    columns:
+      - name: customer_sk
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests: [unique, not_null]
+
+  - name: dim_policy
+    columns:
+      - name: policy_sk
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests: [unique, not_null]
+      - name: policy_tenure_segment
+        data_tests:
+          - accepted_values:
+              values: ['new', 'established', 'long_term']
+
+  - name: dim_risk
+    columns:
+      - name: risk_sk
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests: [unique, not_null]
+      - name: risk_tier
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['low_risk', 'medium_risk', 'high_risk']
+      - name: composite_risk_score
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100

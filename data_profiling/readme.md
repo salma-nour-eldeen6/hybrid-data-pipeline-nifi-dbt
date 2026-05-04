@@ -32,8 +32,7 @@ Gold Layer (Business models + KPIs + analytics)
 ## Data Model View
 
 Below is the physical view of the database structure showing tables and relationships:
-
-![Database Views](imgs/viewsInDB.png)
+![Database Views](../imgs/viewsInDB.png)
 
 ---
 

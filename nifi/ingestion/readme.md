@@ -22,7 +22,7 @@ GetFile → PutDatabaseRecord → Logging
 
 ## Flow Overview
 
-![Flow](screenshots/flow.png)
+![Flow](../screenshots/flow.png)
 
 This diagram shows the full NiFi pipeline, including:
 - File ingestion
@@ -64,7 +64,7 @@ This diagram shows the full NiFi pipeline, including:
 
 ## Controller Services
 
-![Controller Services](screenshots/controller_services.png)
+![Controller Services](../screenshots/controller_services.png)
 
 The pipeline uses:
 
@@ -87,7 +87,7 @@ Data is stored in:
 
 ## Data Validation
 
-![Database Result](screenshots/database_result.png)
+![Database Result](../screenshots/database_result.png)
 
 A validation query confirms successful ingestion:
 
@@ -96,7 +96,7 @@ SELECT COUNT(*) FROM bronze.insurance_data;
 ```
 ---
 
-![Database Result](screenshots/dbContent.png)
+![Database Result](../screenshots/dbContent.png)
 
 A validation query confirms successful ingestion:
 

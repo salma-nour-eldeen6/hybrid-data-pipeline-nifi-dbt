@@ -17,6 +17,11 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./DB/init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always
 
 
@@ -73,32 +78,77 @@ services:
   # =========================
   # Airflow
   # =========================
-  airflow:
+
+  airflow-init:
     image: apache/airflow:2.8.1
-    container_name: airflow
+    container_name: airflow-init
+    env_file:
+      - .env
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW_DB_CONN}
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}
+    entrypoint: bash
+    command:
+      - -c
+      - |
+        airflow db migrate &&
+        airflow users create \
+          --username ${AIRFLOW_USER} \
+          --password ${AIRFLOW_PASSWORD} \
+          --firstname admin \
+          --lastname admin \
+          --role Admin \
+          --email ${AIRFLOW_EMAIL} || true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  airflow-webserver:
+    image: apache/airflow:2.8.1
+    container_name: airflow-webserver
     env_file:
       - .env
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW_DB_CONN}
+      _PIP_ADDITIONAL_REQUIREMENTS: "dbt-postgres==1.7.0"
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}
+      AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth' 
     ports:
-      - "${AIRFLOW_PORT}:8080"
+      - "8090:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./dbt/warehouse:/usr/app/dbt
+
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    command: airflow webserver
     restart: always
-    command: >
-      bash -c "
-      airflow db migrate &&
-      airflow users create
-        --username ${AIRFLOW_USER}
-        --password ${AIRFLOW_PASSWORD}
-        --firstname admin
-        --lastname admin
-        --role Admin
-        --email ${AIRFLOW_EMAIL} || true &&
-      airflow webserver & airflow scheduler
-      "
+
+  airflow-scheduler:
+    image: apache/airflow:2.8.1
+    container_name: airflow-scheduler
+    env_file:
+      - .env
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW_DB_CONN}
+      _PIP_ADDITIONAL_REQUIREMENTS: "dbt-postgres==1.7.0"
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./dbt/warehouse:/usr/app/dbt
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    command: airflow scheduler
+    restart: always
 
 
   # =========================

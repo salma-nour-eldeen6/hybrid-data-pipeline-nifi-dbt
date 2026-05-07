@@ -1,0 +1,85 @@
+{
+  "flowContents": {
+    "identifier": "e5f1e35a-ae5d-30e8-876c-a6a4800ec848",
+    "name": "NiFi Flow",
+    "processors": [
+      {
+        "name": "GenerateFlowFile",
+        "type": "org.apache.nifi.processors.standard.GenerateFlowFile",
+        "properties": {
+          "Custom Text": "{\n  \"conf\": {\n    \"triggered_by\": \"nifi\",\n    \"source\": \"manual\"\n  }\n}"
+        }
+      },
+
+      {
+        "name": "UpdateAttribute (Auth Injection)",
+        "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
+        "properties": {
+          "Authorization": "Bearer ${AIRFLOW_BEARER_TOKEN}",
+          "Cookie": "${AIRFLOW_SESSION_COOKIE}",
+          "X-CSRFToken": "${AIRFLOW_CSRF_TOKEN}"
+        }
+      },
+
+      {
+        "name": "InvokeHTTP (Trigger Airflow DAG)",
+        "type": "org.apache.nifi.processors.standard.InvokeHTTP",
+        "properties": {
+          "HTTP Method": "POST",
+          "HTTP URL": "${AIRFLOW_BASE_URL}/api/v1/dags/${DAG_ID}/dagRuns",
+          "Content-Type": "application/json",
+
+          "Connection Timeout": "5 secs",
+          "Socket Read Timeout": "15 secs",
+          "Socket Write Timeout": "15 secs",
+
+          "Response Body Attribute Name": "response.body",
+          "Response Header Request Attributes Enabled": "true",
+          "Response Redirects Enabled": "true"
+        }
+      },
+
+      {
+        "name": "LogAttribute (Response Logger)",
+        "type": "org.apache.nifi.processors.standard.LogAttribute",
+        "properties": {
+          "Log Level": "info",
+          "Log FlowFile Properties": "true",
+          "Attributes to Log Regular Expression": ".*"
+        }
+      },
+
+      {
+        "name": "LogAttribute (Final Debug)",
+        "type": "org.apache.nifi.processors.standard.LogAttribute",
+        "properties": {
+          "Log Level": "info",
+          "Log Payload": "false"
+        }
+      }
+    ],
+
+    "connections": [
+      {
+        "source": "GenerateFlowFile",
+        "destination": "UpdateAttribute (Auth Injection)",
+        "relationship": "success"
+      },
+      {
+        "source": "UpdateAttribute (Auth Injection)",
+        "destination": "InvokeHTTP (Trigger Airflow DAG)",
+        "relationship": "success"
+      },
+      {
+        "source": "InvokeHTTP (Trigger Airflow DAG)",
+        "destination": "LogAttribute (Response Logger)",
+        "relationship": "Response"
+      },
+      {
+        "source": "InvokeHTTP (Trigger Airflow DAG)",
+        "destination": "LogAttribute (Final Debug)",
+        "relationship": "Original"
+      }
+    ]
+  }
+}

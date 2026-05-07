@@ -1,0 +1,81 @@
+{
+  "flowContents": {
+    "identifier": "ccbee1db-45f6-329f-95e6-e501a93c5a4f",
+    "name": "NiFi Flow",
+    "processGroups": [],
+    "remoteProcessGroups": [],
+
+    "processors": [
+      {
+        "name": "GetFile",
+        "type": "org.apache.nifi.processors.standard.GetFile",
+        "properties": {
+          "Input Directory": "/data",
+          "Keep Source File": "true",
+          "Polling Interval": "30 sec",
+          "Batch Size": "10",
+          "File Filter": "[^\\.].*",
+          "Recurse Subdirectories": "true"
+        }
+      },
+
+      {
+        "name": "PutDatabaseRecord",
+        "type": "org.apache.nifi.processors.standard.PutDatabaseRecord",
+        "properties": {
+          "Table Name": "insurance_data",
+          "Schema Name": "bronze",
+          "Statement Type": "INSERT",
+          "Database Connection Pooling Service": "eb259592-1ca5-30ab-9103-8621b31071df",
+          "Record Reader": "0c74ec19-daac-3e8e-b490-423b9a7b9ec6",
+          "Translate Field Names": "true",
+          "Column Name Translation Strategy": "REMOVE_UNDERSCORE",
+          "Unmatched Field Behavior": "Ignore Unmatched Fields",
+          "Maximum Batch Size": "1000"
+        }
+      },
+
+      {
+        "name": "LogAttribute",
+        "type": "org.apache.nifi.processors.standard.LogAttribute",
+        "properties": {
+          "Log Level": "info",
+          "Output Format": "Line per Attribute",
+          "Attributes to Log Regular Expression": ".*",
+          "Log FlowFile Properties": "true"
+        }
+      }
+    ],
+
+    "connections": []
+  },
+
+  "controllerServices": [
+    {
+      "name": "DBCPConnectionPool",
+      "type": "org.apache.nifi.dbcp.DBCPConnectionPool",
+      "properties": {
+        "Database Driver Class Name": "org.postgresql.Driver",
+
+        "Database Connection URL": "${DB_URL}",
+        "Database User": "${DB_USER}",
+        "Password": "${DB_PASSWORD}",
+
+        "Max Total Connections": "8",
+        "Maximum Idle Connections": "8",
+        "Max Wait Time": "500 millis"
+      }
+    },
+
+    {
+      "name": "CSVReader",
+      "type": "org.apache.nifi.csv.CSVReader",
+      "properties": {
+        "Schema Access Strategy": "csv-header-derived",
+        "Treat First Line as Header": "true",
+        "Trim Fields": "true",
+        "Character Set": "UTF-8"
+      }
+    }
+  ]
+}

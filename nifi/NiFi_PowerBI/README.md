@@ -41,7 +41,7 @@ PostgreSQL (raw_gold.fact_customer_insurance)
 
 ## NiFi Flow Screenshot
 
-![NiFi Flow](../screenshots/NIFI_Powerbi_Flow.png)
+![NiFi Flow](../screenshots/NIFI_Powerbi_Flow.jpeg)
 
 ---
 

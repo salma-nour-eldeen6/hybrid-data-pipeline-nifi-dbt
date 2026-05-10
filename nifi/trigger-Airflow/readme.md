@@ -86,7 +86,7 @@ POST /api/v1/dags/{dag_id}/dagRuns
 
 ### 1️⃣ NiFi Triggering Airflow
 
-![NiFi Trigger Airflow](../screenshots/trigger_Airflow.png)
+![NiFi Trigger Airflow](../screenshots/trigger_Airflow.jpeg)
 
 ---
 

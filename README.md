@@ -162,7 +162,7 @@ It removes the need for:
 
 ### Pipeline Architecture
 
-![Power BI Flow](nifi/screenshots/NIFI_Powerbi_Flow.png)
+![Power BI Flow](nifi/screenshots/NIFI_Powerbi_Flow.jpeg)
 
 ---
 

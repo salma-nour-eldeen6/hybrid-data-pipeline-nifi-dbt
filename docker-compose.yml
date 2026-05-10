@@ -51,9 +51,10 @@ services:
     environment:
       SINGLE_USER_CREDENTIALS_USERNAME: ${NIFI_USERNAME}
       SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_PASSWORD}
-
       NIFI_WEB_HTTP_PORT: 8080
       NIFI_CLUSTER_IS_NODE: "false"
+      NIFI_JVM_HEAP_INIT: 512m
+      NIFI_JVM_HEAP_MAX: 2g
 
     volumes:
       - nifi_conf:/opt/nifi/nifi-current/conf

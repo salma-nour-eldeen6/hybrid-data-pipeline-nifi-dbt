@@ -120,7 +120,7 @@ It simulates real-time orchestration where:
 
 ### Execution Flow
 
-![Airflow Trigger](nifi/screenshots/trigger_Airflow.png)
+![Airflow Trigger](nifi/screenshots/trigger_Airflow.jpeg)
 
 ![Airflow Run](nifi/screenshots/Airflow_run.png)
 

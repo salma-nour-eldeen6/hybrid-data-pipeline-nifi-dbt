@@ -2,8 +2,7 @@
  
 ---
  
-
-![Project Flow](imgs\Project_Flow.png)
+![Project Flow](imgs/Project_Flow.png)
 ---
 
 ## Overview

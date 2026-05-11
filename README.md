@@ -1,374 +1,239 @@
-# End-to-End Medallion Data Platform (NiFi + Airflow + dbt + Power BI)
- 
----
- 
+# End-to-End Medallion Data Platform
+
+A complete modern data engineering pipeline that ingests raw insurance data, transforms it through Bronze → Silver → Gold layers, orchestrates transformations with Airflow, and pushes final analytics to Power BI in real time.
+
 ![Project Flow](imgs/Project_Flow.png)
----
-
-## Overview
-
-This project implements a complete **end-to-end modern data engineering pipeline** that integrates:
-
-* **Apache NiFi** → Data ingestion + orchestration triggers + data distribution
-* **dbt (Data Build Tool)** → Data transformation & analytics modeling
-* **Apache Airflow** → Workflow orchestration for dbt pipelines
-* **PostgreSQL** → Data warehouse storage (Medallion Architecture)
-* **Power BI (Push Dataset API)** → Real-time dashboard updates
 
 ---
 
-## High-Level Architecture
+## Table of Contents
+
+- [Architecture Overview](#architecture-overview)
+- [Project Structure](#project-structure)
+- [Medallion Layers](#medallion-layers)
+- [Components](#components)
+  - [NiFi — Ingestion & Distribution](#1-nifi--ingestion--distribution)
+  - [dbt — Transformation](#2-dbt--transformation)
+  - [Airflow — Orchestration](#3-airflow--orchestration)
+  - [EDA — Data Profiling](#4-eda--data-profiling)
+- [Getting Started](#getting-started)
+
+---
+
+## Architecture Overview
 
 ```
 CSV Files
-   ↓
-NiFi (Ingestion Layer)
-   ↓
-PostgreSQL Bronze Layer
-   ↓
-dbt (Silver → Gold Transformation)
-   ↓
-Airflow (Orchestration of dbt)
-   ↓
-NiFi (Trigger + Distribution Layer)
-   ↓
-Power BI (Real-time Dashboard via Push API)
+    │
+    ▼
+NiFi (Ingestion)
+    │  GetFile → PutDatabaseRecord
+    ▼
+PostgreSQL — Bronze Layer (raw)
+    │
+    ▼
+Airflow (triggers dbt DAG)
+    │
+    ▼
+dbt — Silver Layer (cleaned & enriched)
+    │
+    ▼
+dbt — Gold Layer (star schema, KPIs)
+    │
+    ▼
+NiFi (Distribution)
+    │  ExecuteSQL → ConvertRecord → InvokeHTTP
+    ▼
+Power BI (real-time push via Push Dataset API)
 ```
 
 ---
 
-# 1. NiFi Layer (Core Integration Engine)
+## Project Structure
 
-NiFi acts as the **central data movement and automation hub** in this system.
-
-It is responsible for:
-
-* Data ingestion into PostgreSQL (Bronze layer)
-* Triggering Airflow DAGs via REST API
-* Pushing final curated data to Power BI
+```
+project-root/
+│
+├── nifi/
+│   ├── ingestion/              # CSV → PostgreSQL Bronze pipeline
+│   │   └── readme.md
+│   ├── trigger-Airflow/        # NiFi → Airflow REST trigger pipeline
+│   │   └── readme.md
+│   ├── NiFi_PowerBI/           # Gold data → Power BI push pipeline
+│   │   └── README.md
+│   └── screenshots/            # Flow screenshots
+│
+├── dbt/
+│   └── warehouse/              # dbt project (Bronze → Silver → Gold models)
+│       └── README.md
+│
+├── dags/
+│   ├── dbt_pipeline.py         # Airflow DAG definition
+│   └── readme.md
+│
+├── data_profiling/             # EDA notebooks and reports
+│   └── readme.md
+│
+├── imgs/                       # Architecture and output screenshots
+└── README.md                   # You are here
+```
 
 ---
 
-## 1.1 Data Ingestion Pipeline
+## Medallion Layers
 
-### README Reference
-
-👉 [`nifi/ingestion/readme.md`](nifi/ingestion/readme.md)
+| Layer | Storage | Managed by | Contents |
+|---|---|---|---|
+| **Bronze** | `insurance_dw.bronze.insurance_data` | NiFi | Raw CSV data, no transformations |
+| **Silver** | `insurance_dw.silver.*` | dbt | Cleaned, typed, feature-engineered data |
+| **Gold** | `insurance_dw.gold.*` | dbt | Star schema — dimensions + fact table |
 
 ---
 
-### Flow
+## Components
+
+### 1. NiFi — Ingestion & Distribution
+
+NiFi acts as the central data movement hub with three independent pipelines.
+
+#### 1.1 CSV Ingestion → Bronze
 
 ```
 GetFile → PutDatabaseRecord → LogAttribute
 ```
 
----
+Ingests raw insurance CSV files into the PostgreSQL Bronze layer using schema inference via `CSVReader`. Handles batch inserts automatically.
 
-### Description
+- **Output table:** `insurance_dw.bronze.insurance_data`
 
-This pipeline ingests raw insurance CSV files into the **Bronze layer** of PostgreSQL.
-
-It handles:
-
-* File ingestion from local directory
-* Schema inference using CSVReader
-* Batch inserts into database
+→ See [`nifi/ingestion/readme.md`](nifi/ingestion/readme.md)
 
 ---
 
-### Flow Visualization
-
-![NiFi Ingestion Flow](nifi/screenshots/flow.png)
-
----
-
-### Output
-
-* Database: `insurance_dw`
-* Schema: `bronze`
-* Table: `insurance_data`
-
----
-
-## 1.2 NiFi → Airflow Trigger Pipeline
-
-### README Reference
-
-👉 [`nifi/trigger-Airflow/readme.md`](nifi/trigger-Airflow/readme.md)
-
----
-
-### Flow
+#### 1.2 Airflow Trigger
 
 ```
 GenerateFlowFile → UpdateAttribute → InvokeHTTP → LogAttribute
 ```
 
----
+Triggers Airflow DAGs via the Airflow REST API, enabling NiFi to kick off the dbt transformation pipeline automatically after ingestion. Runs every **1 minute**.
 
-### Description
-
-This pipeline enables NiFi to **trigger Airflow DAGs programmatically** using REST API.
-
-It simulates real-time orchestration where:
-
-* NiFi initiates execution
-* Airflow handles transformation workflows
+→ See [`nifi/trigger-Airflow/readme.md`](nifi/trigger-Airflow/readme.md)
 
 ---
 
-### Execution Flow
-
-![Airflow Trigger](nifi/screenshots/trigger_Airflow.jpeg)
-
-![Airflow Run](nifi/screenshots/Airflow_run.png)
-
----
-
-### ⏱ Schedule
-
-* DAG runs every **1 minute**
-* Enables near real-time pipeline orchestration
-
----
-
-## 1.3 Data Distribution (NiFi → Power BI)
-
-### README Reference
-
-👉 [`nifi/NiFi_PowerBI/README.md`](nifi/NiFi_PowerBI/README.md)
-
----
-
-### Flow
+#### 1.3 Gold → Power BI Push
 
 ```
 ExecuteSQL → ConvertRecord → ReplaceText → UpdateAttribute → InvokeHTTP → LogAttribute
 ```
 
----
+Reads final Gold-layer data from PostgreSQL and pushes it to Power BI using the **Push Dataset API** — no manual refresh or scheduled import needed.
 
-### Description
-
-This pipeline extracts **final gold-layer data** and pushes it directly into Power BI using the **Push Dataset API**.
-
-It removes the need for:
-
-* Manual refresh
-* Scheduled Power BI imports
+→ See [`nifi/NiFi_PowerBI/README.md`](nifi/NiFi_PowerBI/README.md)
 
 ---
 
-### Pipeline Architecture
+### 2. dbt — Transformation
 
-![Power BI Flow](nifi/screenshots/NIFI_Powerbi_Flow.jpeg)
+dbt transforms raw Bronze data into analytics-ready Gold models following the Medallion Architecture.
 
----
+#### Models
 
-### Dashboard Output
+**Bronze** — basic cleaning, type casting, null validation applied to raw ingested data.
 
-![Power BI Dashboard](nifi/screenshots/dashboard.png)
+**Silver** — business transformations and feature engineering:
+- Risk category classification
+- Income segmentation
+- Lifestyle profiling
 
----
+**Gold** — star schema for analytics:
 
-### Key Value
+| Table | Type |
+|---|---|
+| `dim_customer` | Dimension |
+| `dim_policy` | Dimension |
+| `dim_risk` | Dimension |
+| `fact_customer_insurance` | Fact |
 
-* Real-time dashboard updates
-* API-based automation
-* Fully hands-free reporting system
-
----
-
-# 2. dbt Layer (Data Transformation Engine)
-
-### README Reference
-
-👉 [`dbt/warehouse/README.md`](dbt/warehouse/README.md)
+→ See [`dbt/warehouse/README.md`](dbt/warehouse/README.md)
 
 ---
 
-## Overview
+### 3. Airflow — Orchestration
 
-dbt is responsible for transforming raw ingested data into structured analytics models.
+Airflow schedules and orchestrates the dbt transformation pipeline via a DAG that enforces task dependency order.
 
-It follows a **Medallion Architecture**:
+#### DAG Flow
 
 ```
-Bronze → Silver → Gold
+dbt_bronze → dbt_silver → dbt_snapshot → dbt_gold → dbt_test
 ```
 
----
+| Task | Description |
+|---|---|
+| `dbt_bronze` | Raw data cleaning |
+| `dbt_silver` | Feature engineering & transformations |
+| `dbt_snapshot` | SCD (Slowly Changing Dimension) tracking |
+| `dbt_gold` | Analytics model generation |
+| `dbt_test` | Data quality validation |
 
-## Data Layers
-
-### 🟤 Bronze Layer
-
-* Raw structured data from NiFi
-* Basic cleaning
-* Type casting + validation
-
----
-
-### ⚪ Silver Layer
-
-* Business transformations
-* Feature engineering:
-
-  * risk categories
-  * income segmentation
-  * lifestyle profiling
+→ See [`dags/readme.md`](dags/readme.md)
 
 ---
 
-### 🟡 Gold Layer
+### 4. EDA — Data Profiling
 
-* Final analytics models
-* Star schema design:
+Validates data quality at every layer of the pipeline.
 
-  * Dim Customer
-  * Dim Policy
-  * Dim Risk
-  * Fact Insurance
+| Layer | Checks |
+|---|---|
+| **Raw** | Schema validation, null checks, duplicate detection |
+| **Bronze** | Invalid value detection, distribution analysis |
+| **Silver** | Feature validation, segmentation verification |
+| **Gold** | KPIs, revenue insights, customer analytics |
 
----
-
-## Analytics Outputs
-
-### Customer Risk Distribution
-
-![Risk Distribution](imgs/customer_risk_distribution.png)
+→ See [`data_profiling/readme.md`](data_profiling/readme.md)
 
 ---
 
-### LTV Analysis
+## Getting Started
 
-![LTV Analysis](imgs/ltv_and_premium_analysis.png)
+### Prerequisites
 
----
+- Docker & Docker Compose
+- Apache NiFi
+- PostgreSQL
+- Python 3.8+ with dbt installed (`pip install dbt-postgres`)
 
-### Data Quality Impact
+### Setup
 
-![Imputation Impact](imgs/imputation_impact.png)
+```bash
+# 1. Clone
+git clone <repository-url>
+cd project-root
 
----
+# 2. Start PostgreSQL
+docker compose up -d postgres
 
-## Key Output Tables
+# 3. Install dbt dependencies
+cd dbt/warehouse
+dbt deps
 
-* `dim_customer`
-* `dim_policy`
-* `dim_risk`
-* `fact_customer_insurance`
+# 4. Run dbt manually (or let Airflow handle it)
+dbt run --select bronze
+dbt run --select silver
+dbt run --select gold
+dbt test
 
----
-
-# 3. EDA Layer (Exploratory Data Analysis)
-
-### README Reference
-
-👉 [`eda/README.md`](data_profiling\readme.md)
-
----
-
-## Purpose
-
-This layer validates data quality across all stages:
-
-* Raw validation
-* Bronze profiling
-* Silver transformation analysis
-* Gold business insights
-
----
-
-## Layered Analysis
-
-### Raw Layer
-
-* schema validation
-* null checks
-* duplicates
-
-### Bronze Layer
-
-* invalid values detection
-* distribution analysis
-
-### Silver Layer
-
-* feature validation
-* segmentation verification
-
-### Gold Layer
-
-* KPIs
-* revenue insights
-* customer analytics
-
----
-
-## Database View
-
-![DB Views](imgs/viewsInDB.png)
-
----
-
-## Outcome
-
-Ensures:
-
-* Data integrity
-* Transformation correctness
-* Business readiness
-
----
-
-# 4. Airflow Orchestration Layer
-
-### README Reference
-
-👉 [`airflow/dbt_pipeline.md`](dags/readme.md)
-
----
-
-## Overview
-
-Airflow orchestrates dbt transformations using a scheduled DAG.
-
----
-
-## DAG Flow
-
-```
-Bronze → Silver → Snapshot → Gold → Tests
+# 5. Start NiFi and deploy the three pipelines
+# See nifi/ingestion/readme.md for setup steps
 ```
 
----
+### Pipeline Execution Order
 
-## DAG Visualization
-
-![Airflow DAG](imgs/dag.png)
-
----
-
-## Task Breakdown
-
-| Task         | Description      |
-| ------------ | ---------------- |
-| dbt_bronze   | raw cleaning     |
-| dbt_silver   | transformations  |
-| dbt_snapshot | SCD tracking     |
-| dbt_gold     | analytics models |
-| dbt_test     | validation       |
-
----
-
-## Key Role
-
-* Automates transformation pipeline
-* Ensures dependency order
-* Enables reproducibility
-
----
- 
- 
+```
+1. Start NiFi ingestion pipeline  →  Bronze data loaded
+2. NiFi triggers Airflow DAG      →  Silver & Gold built by dbt
+3. NiFi pushes Gold to Power BI   →  Dashboard updates in real time
+```

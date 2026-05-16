@@ -156,7 +156,7 @@ dbt transforms raw Bronze data into analytics-ready Gold models following the Me
 | `dim_risk` | Dimension |
 | `fact_customer_insurance` | Fact |
 
-→ See [`dbt/warehouse/README.md`](dbt/warehouse/readme.md)
+→ See [`dbt/warehouse/readme.md`](dbt/warehouse/readme.md)
 
 ---
 
